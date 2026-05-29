@@ -1,0 +1,6 @@
+# The agent core + governance layer are pure standard library (zero runtime deps),
+# so the offline demo and the tests run with nothing installed.
+#
+# Only the LIVE Qwen Cloud client needs the OpenAI SDK, which talks to Qwen models
+# through the DashScope OpenAI-compatible endpoint.
+openai>=1.30
