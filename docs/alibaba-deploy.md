@@ -34,16 +34,20 @@ these Alibaba Cloud targets satisfies the "backend runs on Alibaba Cloud" rule:
   push to **Alibaba Cloud Container Registry (ACR)**, deploy.
 - **ECS** — a single VM running the service behind nginx, simplest to screen-record.
 
-Minimal container:
+This repo ships a production `Dockerfile`, `requirements-server.txt`, and a
+`deploy/alibaba.sh` helper, so the build/run/push cycle is:
 
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt fastapi uvicorn
-ENV DASHSCOPE_API_KEY=""
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"]
+```bash
+./deploy/alibaba.sh build                            # build the backend image
+DASHSCOPE_API_KEY=sk-... ./deploy/alibaba.sh run     # run locally on :8080
+
+# push to Alibaba Cloud Container Registry, then create an FC/SAE app from it:
+ACR_REGISTRY=registry.cn-hangzhou.aliyuncs.com ACR_NAMESPACE=<ns> ACR_USERNAME=<user> \
+  ./deploy/alibaba.sh push
 ```
+
+The image takes `DASHSCOPE_API_KEY` and `PORT` at runtime (never baked in).
+Health check: `GET /healthz`.
 
 Keep `allow_destructive=()` empty by default in any internet-facing deployment, and
 keep `usd_cap` small. Add a real `ToolSpec.host` per tool so the egress allowlist is
