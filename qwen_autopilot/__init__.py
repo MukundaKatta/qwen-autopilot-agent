@@ -29,7 +29,7 @@ from .governance import (
     DestructiveActionDenied,
 )
 from .agent import AutopilotAgent
-from .qwen_client import QwenClient, FakeQwenClient
+from .qwen_client import QwenClient, FakeQwenClient, tool_schemas
 
 __version__ = "0.1.0"
 
@@ -52,4 +52,6 @@ __all__ = [
     "AutopilotAgent",
     "QwenClient",
     "FakeQwenClient",
+    "tool_schemas",
+    "__version__",
 ]
