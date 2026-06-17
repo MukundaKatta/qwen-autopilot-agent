@@ -72,7 +72,7 @@ rollback allowed because the operator enabled exactly that action, then a second
 run where the cost cap stops an over-budget action before it executes.
 
 ```bash
-python -m pytest -q     # 16 tests, no deps
+python -m unittest discover -s tests    # 33 tests, standard library only
 ```
 
 ## Use it from code
@@ -99,6 +99,74 @@ print(session.audit_jsonl())
 OpenAI-compatible endpoint. Swap the stub tool bodies in `qwen_autopilot/tools.py`
 for real Alibaba Cloud / Kubernetes / observability calls.
 
+## API reference
+
+Everything below is importable from the top-level `qwen_autopilot` package.
+
+### `GovernedSession`
+
+The leash around every tool call. Construct it with the policy for one run, use
+it as a context manager so a `SESSION_CLOSE` audit event is always recorded.
+
+```python
+GovernedSession(
+    *,
+    usd_cap: float = 1.0,                 # hard spend ceiling for the run
+    call_cap: int = 20,                   # max successful tool calls
+    allowed_hosts: tuple[str, ...] = (),  # fnmatch patterns, e.g. ("*.ops.internal",)
+    allow_destructive: tuple[str, ...] = (),  # destructive tool names that may run
+    hash_args: bool = True,               # SHA-256 args in the audit log
+)
+```
+
+- `run(spec, fn, args) -> Any` — vet the call against all five guards, then
+  execute `fn(**args)`. Raises a `GovernanceError` subclass if denied; the
+  function body never runs on a denial.
+- `vet(spec, args) -> None` — run the guards without executing (raises on deny).
+- `audit_jsonl() -> str` — the full audit trail as newline-delimited JSON.
+- Attributes: `spent_usd`, `calls`, `audit` (list of `AuditEvent`).
+
+Each guard raises its own typed exception, all subclasses of `GovernanceError`
+with a `.reason` (`DenyReason`): `CallCapExceededError`, `ToolArgsInvalidError`,
+`EgressDeniedError`, `DestructiveActionDenied`, `BudgetExceededError`.
+
+### `AutopilotAgent`
+
+```python
+AutopilotAgent(client, session, specs, funcs, loop_cap=8)
+agent.run(incident: str) -> RemediationReport
+```
+
+The bounded loop. `client` is any object with a `chat(messages, tools=...)`
+method returning an `AssistantTurn` (`QwenClient` for live, `FakeQwenClient` for
+offline). `specs` and `funcs` are the declarative tool registry (see
+`qwen_autopilot.tools.SPECS` / `FUNCS`). The loop runs at most `loop_cap` turns.
+
+### `RemediationReport`
+
+Returned by `agent.run`. Fields: `incident`, `root_cause`, `steps` (per-call log
+including denials), `actions_taken` (non-read tools that executed), `resolved`
+(true only when at least one remediating action ran). `to_dict()` serializes it.
+
+### Clients and schemas
+
+- `QwenClient(model="qwen-plus", api_key=None, base_url=...)` — live DashScope
+  client. Needs the optional `openai` SDK and `DASHSCOPE_API_KEY`.
+- `FakeQwenClient(script: list[AssistantTurn])` — replays a fixed list of turns
+  for offline demos and tests, same `chat` interface, no network.
+- `tool_schemas(specs) -> list[dict]` — render `ToolSpec`s into OpenAI/Qwen
+  function-calling tool schemas.
+
+## Development
+
+The library and its tests are standard library only, so there is nothing to
+install:
+
+```bash
+python -m unittest discover -s tests    # 33 tests
+python examples/offline_demo.py         # end-to-end offline run
+```
+
 ## Running on Qwen Cloud + Alibaba Cloud
 
 The hackathon requires the backend to run on Alibaba Cloud and use Qwen models.
@@ -115,7 +183,7 @@ qwen_autopilot/
   qwen_client.py  # live Qwen Cloud client + offline FakeQwenClient (same interface)
   agent.py        # the bounded Autopilot loop
 examples/offline_demo.py   # credential-free end-to-end demo
-tests/                     # 16 tests (governance + agent), zero deps
+tests/                     # 33 tests (governance + agent + client), zero deps
 docs/architecture.md       # architecture + security boundaries
 docs/alibaba-deploy.md     # Qwen Cloud / Alibaba Cloud deployment guide
 ```
