@@ -2,5 +2,5 @@
 # only; the HTTP backend adds these.
 openai>=1.30
 fastapi>=0.110
-uvicorn>=0.29
+uvicorn>=0.51.0
 pydantic>=2.6
