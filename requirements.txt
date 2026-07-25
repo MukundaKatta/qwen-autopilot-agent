@@ -3,4 +3,4 @@
 #
 # Only the LIVE Qwen Cloud client needs the OpenAI SDK, which talks to Qwen models
 # through the DashScope OpenAI-compatible endpoint.
-openai>=1.30
+openai>=2.48.0
