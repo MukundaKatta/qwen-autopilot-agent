@@ -1,6 +1,6 @@
 # Deployable backend (server.py). The core library itself is standard-library
 # only; the HTTP backend adds these.
-openai>=1.30
+openai>=3.0.0
 fastapi>=0.110
 uvicorn>=0.29
 pydantic>=2.6
